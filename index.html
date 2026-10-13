@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root { color-scheme: light; padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); }
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<title>Đây Là Gì?</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600&display=swap">
+<style>
+  /* Layout: one flashcard-sized board in a single column; the object sits in a picture frame, letter tiles grouped by syllable below it. */
+  :root {
+    --bg: #E6EEF2;
+    --surface: #FFFFFF;
+    --frame: #D5E3EA;
+    --ink: #14283A;
+    --muted: #586B79;
+    --line: #C3D2DB;
+    --accent: #F2B705;
+    --flag: #C8201A;
+    --on-flag: #FFE45C;
+    --ok: #1B8F60;
+    --bad: #CC3F3F;
+    --on-state: #FFFFFF;
+    --display: "Baloo 2", "Trebuchet MS", "Segoe UI", sans-serif;
+    --body: "Be Vietnam Pro", "Segoe UI", system-ui, sans-serif;
+    --emoji: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+    --vvh: 100vh;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0E1A25; --surface: #172836; --frame: #20384A; --ink: #EAF1F4; --muted: #94A8B6;
+      --line: #2E4759; --accent: #F5C433; --flag: #D8362B; --on-flag: #FFE66B; --ok: #35B37E; --bad: #E96A6A;
+      --on-state: #0E1A25; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0E1A25; --surface: #172836; --frame: #20384A; --ink: #EAF1F4; --muted: #94A8B6;
+    --line: #2E4759; --accent: #F5C433; --flag: #D8362B; --on-flag: #FFE66B; --ok: #35B37E; --bad: #E96A6A;
+    --on-state: #0E1A25; color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.5;
+    padding-inline: max(16px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+    padding-block: 32px 48px;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .board {
+    max-width: 560px;
+    margin-inline: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(2.25rem, 9vw, 3rem);
+    line-height: 1.2;
+    margin: 0;
+    text-wrap: balance;
+  }
+  h1 span { color: var(--flag); }
+  .lede { margin: 4px 0 0; color: var(--muted); max-width: 48ch; }
+
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible, .tiles:focus-within { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+  /* Start screen */
+  .levels { display: flex; flex-direction: column; gap: 12px; }
+  .level {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    column-gap: 16px;
+    row-gap: 2px;
+    text-align: left;
+    background: var(--surface);
+    border: 2px solid var(--ink);
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 4px 0 var(--ink);
+    transition: transform .08s, box-shadow .08s;
+  }
+  @media (hover: hover) { .level:hover { transform: translateY(-1px); box-shadow: 0 5px 0 var(--ink); } }
+  .level:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+  .level-num {
+    grid-row: span 2;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 2rem;
+    line-height: 1;
+    width: 52px; height: 52px;
+    display: grid; place-items: center;
+    background: var(--flag);
+    color: var(--on-flag);
+    border-radius: 50%;
+  }
+  .level-name { font-family: var(--display); font-weight: 600; font-size: 1.3125rem; line-height: 1.2; }
+  .level-meta { color: var(--muted); font-size: .9375rem; min-width: 0; }
+
+  /* Play screen */
+  .play {
+    background: var(--surface);
+    border: 2px solid var(--ink);
+    border-radius: 18px;
+    padding: 20px 16px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .topline { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .where { font-family: var(--display); font-weight: 600; font-size: 1.1875rem; }
+  .where small { font-family: var(--body); font-weight: 400; font-size: .875rem; color: var(--muted); margin-left: 8px; }
+  .clock { font-family: var(--display); font-weight: 700; font-size: 1.625rem; font-variant-numeric: tabular-nums; line-height: 1; }
+  .clock small { font-size: .875rem; font-weight: 500; color: var(--muted); margin-left: 2px; }
+  .clock.low { color: var(--bad); }
+  .bar { height: 10px; background: var(--frame); border-radius: 5px; overflow: hidden; margin-top: -8px; }
+  .bar i { display: block; height: 100%; width: 100%; background: var(--accent); border-radius: 5px; transform-origin: left; }
+  .bar.low i { background: var(--bad); }
+
+  .picture {
+    background: var(--frame);
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+  }
+  .picture span {
+    font-family: var(--emoji);
+    font-size: min(clamp(4.5rem, 30vw, 9.5rem), max(3.75rem, calc(var(--vvh) * 0.22)));
+    line-height: 1.15;
+  }
+
+  /* Each syllable is its own group of tiles, so long names wrap between syllables. */
+  .tiles {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 20px;
+    border-radius: 10px;
+  }
+  .syl { display: flex; gap: 5px; }
+  .tile {
+    width: clamp(28px, 8.5vw, 50px);
+    aspect-ratio: 1 / 1.25;
+    display: grid;
+    place-items: center;
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(1rem, 4.8vw, 1.625rem);
+    line-height: 1;
+    padding-top: .15em;
+    border: 2px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+  .tile.given { background: var(--flag); border-color: var(--flag); color: var(--on-flag); }
+  .tile.typed { border-color: var(--ink); }
+  .tiles:focus-within .tile.next { border-color: var(--ink); box-shadow: inset 0 -4px 0 var(--accent); }
+  .tiles.won .tile { background: var(--ok); border-color: var(--ok); color: var(--on-state); }
+  .tiles.lost .tile:not(.given) { background: var(--bad); border-color: var(--bad); color: var(--on-state); }
+  .tiles.shake { animation: shake .35s; }
+  @keyframes shake { 20% { transform: translateX(-7px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+  #guess-input {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    opacity: 0;
+    font-size: 16px;
+    border: 0; padding: 0;
+    cursor: text;
+  }
+
+  .status { margin: 0; min-height: 1.5em; text-align: center; color: var(--muted); }
+  .status strong { color: var(--ink); font-weight: 600; }
+  .status.won strong { color: var(--ok); }
+  .status.lost strong { color: var(--bad); }
+
+  .total { text-align: center; display: flex; flex-direction: column; gap: 2px; }
+  .total-label { font-size: .8125rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .total-value { font-family: var(--display); font-weight: 700; font-size: clamp(2.25rem, 11vw, 3.25rem); line-height: 1.05; font-variant-numeric: tabular-nums; }
+  #fireworks { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .btn {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 1.0625rem;
+    line-height: 1.3;
+    padding: 9px 20px;
+    border-radius: 999px;
+    border: 2px solid var(--ink);
+    background: var(--surface);
+  }
+  .btn.primary { background: var(--ink); color: var(--surface); }
+  .btn:active { transform: translateY(1px); }
+
+  /* Touch screens */
+  .btn { min-height: 44px; }
+  .btn, .level, .tile, .picture { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  @media (max-width: 520px) {
+    body { padding-block: 16px 32px; }
+    body.playing header { display: none; }
+    .board { gap: 16px; }
+    .play { padding: 14px 12px 18px; gap: 14px; }
+    .picture { padding: 10px; }
+    .bar { margin-top: -6px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tiles.shake { animation: none; }
+    .level { transition: none; }
+  }
+</style>
+
+<main class="board">
+  <header>
+    <h1 lang="vi">Đây là <span>gì?</span></h1>
+    <p class="lede" id="lede">What is this? Look at the picture, read the letters you are given, and type the rest of its Vietnamese name before the clock runs out. Pick a level, then play 5 games. The clock starts at 60 seconds and loses 10 with every game.</p>
+  </header>
+
+  <section class="levels" id="screen-start" aria-label="Choose a level">
+    <button class="level" type="button" data-level="0">
+      <span class="level-num">1</span>
+      <span class="level-name">Three letters given</span>
+      <span class="level-meta">Easy · 5 games</span>
+    </button>
+    <button class="level" type="button" data-level="1">
+      <span class="level-num">2</span>
+      <span class="level-name">Two letters given</span>
+      <span class="level-meta">Medium · 5 games</span>
+    </button>
+    <button class="level" type="button" data-level="2">
+      <span class="level-num">3</span>
+      <span class="level-name">One letter given</span>
+      <span class="level-meta">Hard · 5 games</span>
+    </button>
+  </section>
+
+  <section class="play" id="screen-play" hidden>
+    <div class="topline">
+      <div class="where"><span id="level-label">Game 1 of 5</span><small id="hint-label">Level 1 · 3 letters given</small></div>
+      <div class="clock" id="clock" role="timer" aria-label="Time left">60<small>s</small></div>
+    </div>
+    <div class="bar" id="bar"><i id="bar-fill"></i></div>
+
+    <div class="picture"><span id="picture" role="img" aria-label="Object to name"></span></div>
+
+    <form id="guess-form" autocomplete="off">
+      <div class="tiles" id="tiles" lang="vi">
+        <input id="guess-input" type="text" lang="vi" inputmode="text" enterkeyhint="go" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Type the missing letters">
+      </div>
+    </form>
+
+    <div class="total" id="total" hidden>
+      <span class="total-label">Total time for 5 games</span>
+      <span class="total-value" id="total-value"></span>
+    </div>
+
+    <p class="status" id="status" aria-live="polite"></p>
+
+    <div class="actions">
+      <button class="btn primary" type="button" id="btn-main" hidden>Next game</button>
+      <button class="btn" type="button" id="btn-reset">Reset</button>
+      <button class="btn" type="button" id="btn-levels">Change level</button>
+    </div>
+  </section>
+</main>
+<canvas id="fireworks" hidden aria-hidden="true"></canvas>
+
+<script>
+(function () {
+  // One shared word list for every level. Names are written with a space between syllables.
+  var WORDS = [
+    ['🚲', 'XE ĐẠP'], ['🏍️', 'XE MÁY'], ['🚌', 'XE BUÝT'], ['🚂', 'TÀU HỎA'], ['✈️', 'MÁY BAY'],
+    ['🚁', 'TRỰC THĂNG'], ['🚀', 'TÊN LỬA'], ['⛵', 'THUYỀN BUỒM'], ['🚑', 'XE CỨU THƯƠNG'], ['🚒', 'XE CỨU HỎA'],
+    ['🚜', 'MÁY KÉO'], ['🛹', 'VÁN TRƯỢT'], ['🚦', 'ĐÈN GIAO THÔNG'], ['📱', 'ĐIỆN THOẠI'], ['💻', 'MÁY TÍNH'],
+    ['⌨️', 'BÀN PHÍM'], ['🖨️', 'MÁY IN'], ['📷', 'MÁY ẢNH'], ['🎧', 'TAI NGHE'], ['💡', 'BÓNG ĐÈN'],
+    ['🔦', 'ĐÈN PIN'], ['🏮', 'ĐÈN LỒNG'], ['⏰', 'ĐỒNG HỒ'], ['⏳', 'ĐỒNG HỒ CÁT'], ['🔑', 'CHÌA KHÓA'],
+    ['🔒', 'Ổ KHÓA'], ['🪜', 'THANG'], ['👓', 'KÍNH MẮT'], ['📖', 'QUYỂN SÁCH'], ['✏️', 'BÚT CHÌ'],
+    ['📏', 'THƯỚC KẺ'], ['📎', 'KẸP GIẤY'], ['✉️', 'PHONG BÌ'], ['📰', 'TỜ BÁO'], ['🗺️', 'BẢN ĐỒ'],
+    ['🛏️', 'GIƯỜNG'], ['🚪', 'CÁNH CỬA'], ['🪟', 'CỬA SỔ'], ['🏠', 'NGÔI NHÀ'], ['🏰', 'LÂU ĐÀI'],
+    ['🪞', 'GƯƠNG'], ['🚿', 'VÒI SEN'], ['🛁', 'BỒN TẮM'], ['🧼', 'XÀ PHÒNG'], ['🪥', 'BÀN CHẢI'],
+    ['🍎', 'QUẢ TÁO'], ['🍌', 'QUẢ CHUỐI'], ['🍉', 'DƯA HẤU'], ['🍇', 'CHÙM NHO'], ['🥕', 'CÀ RỐT'],
+    ['🍅', 'CÀ CHUA'], ['🥔', 'KHOAI TÂY'], ['🍞', 'BÁNH MÌ'], ['🥚', 'QUẢ TRỨNG'], ['🥢', 'ĐÔI ĐŨA'],
+    ['☕', 'CÀ PHÊ'], ['🎂', 'BÁNH KEM'], ['🍬', 'VIÊN KẸO'], ['🔪', 'CON DAO'], ['⚽', 'QUẢ BÓNG'],
+    ['🎈', 'BÓNG BAY'], ['🪁', 'CON DIỀU'], ['🎲', 'XÚC XẮC'], ['♟️', 'QUÂN CỜ'], ['🎣', 'CẦN CÂU'],
+    ['🎸', 'ĐÀN GHI TA'], ['🥁', 'TRỐNG'], ['🔔', 'CHUÔNG'], ['🎨', 'BẢNG MÀU'], ['🥇', 'HUY CHƯƠNG'],
+    ['🔭', 'KÍNH THIÊN VĂN'], ['🔬', 'KÍNH HIỂN VI'], ['🧭', 'LA BÀN'], ['🧲', 'NAM CHÂM'], ['⚓', 'MỎ NEO'],
+    ['🌡️', 'NHIỆT KẾ'], ['💉', 'ỐNG TIÊM'], ['🩺', 'ỐNG NGHE'], ['🧯', 'BÌNH CỨU HỎA'], ['🪛', 'TUA VÍT'],
+    ['🧱', 'VIÊN GẠCH'], ['🪵', 'KHÚC GỖ'], ['💍', 'CHIẾC NHẪN'], ['👑', 'VƯƠNG MIỆN'], ['🎁', 'HỘP QUÀ'],
+    ['🪙', 'ĐỒNG XU'], ['🧵', 'CUỘN CHỈ'], ['🧤', 'GĂNG TAY'], ['🧣', 'KHĂN QUÀNG'], ['🛒', 'XE ĐẨY'],
+    ['⛺', 'LỀU TRẠI'], ['🌵', 'XƯƠNG RỒNG'], ['🌹', 'HOA HỒNG'], ['🌻', 'HOA HƯỚNG DƯƠNG'], ['🌈', 'CẦU VỒNG'],
+    ['⭐', 'NGÔI SAO'], ['🌙', 'MẶT TRĂNG'], ['☀️', 'MẶT TRỜI'], ['🌍', 'TRÁI ĐẤT'], ['🎆', 'PHÁO HOA']
+  ];
+
+  var HINTS = [3, 2, 1];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var startScreen = $('screen-start'), playScreen = $('screen-play'), lede = $('lede');
+  var tiles = $('tiles'), input = $('guess-input'), statusEl = $('status');
+  var clock = $('clock'), bar = $('bar'), barFill = $('bar-fill');
+  var btnMain = $('btn-main');
+
+  // One series is 5 games at the chosen level; each game has 10 seconds less than the one before.
+  var GAME_SECONDS = [60, 50, 40, 30, 20];
+  var LAST_GAME = GAME_SECONDS.length - 1;
+  var TYPE_PROMPT = 'Type the missing letters. Accent marks are optional.';
+
+  var s = { phase: 'start', level: 0, game: 0, word: '', letters: [], given: [], typed: [], deadline: 0, total: 0, runMs: 0, used: [] };
+  var ticker = null;
+  var composing = false;
+
+  // No object repeats until every word has been shown.
+  function pickWord() {
+    var list = WORDS.filter(function (w) { return s.used.indexOf(w[1]) === -1; });
+    if (!list.length) {
+      s.used = [s.word];
+      list = WORDS.filter(function (w) { return w[1] !== s.word; });
+    }
+    var pick = list[Math.floor(Math.random() * list.length)];
+    s.used.push(pick[1]);
+    return pick;
+  }
+
+  // The first letter is always given; the other hints land on random positions.
+  function pickGiven(length, count) {
+    var given = [0], rest = [];
+    for (var i = 1; i < length; i++) rest.push(i);
+    while (given.length < count && rest.length) {
+      given.push(rest.splice(Math.floor(Math.random() * rest.length), 1)[0]);
+    }
+    return given;
+  }
+
+  function blanks() { return s.letters.length - s.given.length; }
+
+  // Phones: the on-screen keyboard covers the lower half of the page, so the board is kept
+  // at the top of the visible area and the picture shrinks to fit above the keyboard.
+  var vv = window.visualViewport;
+  function viewTop() { return vv ? vv.offsetTop : 0; }
+  function viewHeight() { return vv ? vv.height : window.innerHeight; }
+  function alignTop() {
+    if (window.innerWidth > 520) return;
+    var top = playScreen.getBoundingClientRect().top - viewTop() - 8;
+    if (Math.abs(top) > 4) window.scrollBy(0, top);
+  }
+  function reveal(el) {
+    var over = el.getBoundingClientRect().bottom - (viewTop() + viewHeight()) + 12;
+    if (over > 0) window.scrollBy(0, over);
+  }
+  function settleView() {
+    document.documentElement.style.setProperty('--vvh', viewHeight() + 'px');
+    if (s.phase === 'play') alignTop();
+    else if (!playScreen.hidden && !btnMain.hidden) reveal(btnMain);
+  }
+  if (vv) vv.addEventListener('resize', settleView);
+  window.addEventListener('orientationchange', function () { setTimeout(settleView, 300); });
+  input.addEventListener('focus', function () { setTimeout(settleView, 300); });
+
+  // After a round the keyboard stays open, so the next game starts without it sliding away and back.
+  // It only closes for the final total, which needs the whole screen.
+  function showResult() {
+    input.value = '';
+    if (s.phase === 'done' || document.activeElement !== input) {
+      input.blur();
+      btnMain.focus();
+    }
+    setTimeout(settleView, 60);
+  }
+
+  // Strips tone and vowel marks so MAY BAY matches MÁY BAY and D matches Đ.
+  function fold(ch) {
+    return ch.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[đĐ]/g, 'D').toUpperCase();
+  }
+
+  // Fireworks for finishing all 5 games: bursts launch for 8 seconds, then the last sparks fade out.
+  var fx = $('fireworks'), ctx = fx.getContext('2d');
+  var FX_COLORS = ['#E63946', '#F2B705', '#1B9E6A', '#2F7DE1', '#A44BD6', '#FF7A1A'];
+  var sparks = [], fxFrame = null, fxUntil = 0, fxNext = 0;
+
+  function burst() {
+    var w = fx.clientWidth, h = fx.clientHeight;
+    var x = w * (0.15 + Math.random() * 0.7), y = h * (0.1 + Math.random() * 0.4);
+    var color = FX_COLORS[Math.floor(Math.random() * FX_COLORS.length)];
+    for (var i = 0; i < 70; i++) {
+      var angle = Math.random() * Math.PI * 2, speed = 1.5 + Math.random() * 5;
+      sparks.push({ x: x, y: y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+        life: 1, decay: 0.008 + Math.random() * 0.012, color: color });
+    }
+  }
+
+  function drawFireworks(now) {
+    ctx.clearRect(0, 0, fx.clientWidth, fx.clientHeight);
+    if (now < fxUntil && now >= fxNext) {
+      burst();
+      fxNext = now + 300 + Math.random() * 400;
+    }
+    sparks = sparks.filter(function (p) { return p.life > 0; });
+    sparks.forEach(function (p) {
+      p.vx *= 0.985;
+      p.vy = p.vy * 0.985 + 0.045;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= p.decay;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    if (sparks.length || now < fxUntil) fxFrame = requestAnimationFrame(drawFireworks);
+    else stopFireworks();
+  }
+
+  function startFireworks() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    stopFireworks();
+    fx.hidden = false;
+    var ratio = window.devicePixelRatio || 1;
+    fx.width = fx.clientWidth * ratio;
+    fx.height = fx.clientHeight * ratio;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    fxUntil = performance.now() + 8000;
+    fxNext = 0;
+    fxFrame = requestAnimationFrame(drawFireworks);
+  }
+
+  function stopFireworks() {
+    cancelAnimationFrame(fxFrame);
+    fxFrame = null;
+    sparks = [];
+    fx.hidden = true;
+  }
+
+  function startGame(level, game) {
+    var hints = HINTS[level], pick = pickWord();
+    s.phase = 'play';
+    s.level = level;
+    s.game = game;
+    s.word = pick[1].normalize('NFC');
+    s.letters = Array.from(s.word.replace(/ /g, ''));
+    s.given = pickGiven(s.letters.length, hints);
+    s.typed = [];
+    s.total = GAME_SECONDS[game] * 1000;
+    s.deadline = performance.now() + s.total;
+
+    startScreen.hidden = true;
+    lede.hidden = true;
+    playScreen.hidden = false;
+    document.body.classList.add('playing');
+    $('picture').textContent = pick[0];
+    $('level-label').textContent = 'Game ' + (game + 1) + ' of ' + GAME_SECONDS.length;
+    $('hint-label').textContent = 'Level ' + (level + 1) + ' · ' + (hints === 1 ? '1 letter given' : hints + ' letters given');
+    tiles.className = 'tiles';
+    statusEl.className = 'status';
+    statusEl.textContent = TYPE_PROMPT;
+    btnMain.hidden = true;
+    $('total').hidden = true;
+    stopFireworks();
+    composing = false;
+    input.disabled = false;
+    input.value = '';
+    renderTiles();
+    tick();
+    clearInterval(ticker);
+    ticker = setInterval(tick, 100);
+    input.focus();
+    settleView();
+  }
+
+  function renderTiles(showAnswer) {
+    tiles.querySelectorAll('.syl').forEach(function (g) { g.remove(); });
+    var i = 0, t = 0, nextMarked = false;
+    s.word.split(' ').forEach(function (syllable) {
+      var group = document.createElement('div');
+      group.className = 'syl';
+      Array.from(syllable).forEach(function (letter) {
+        var el = document.createElement('div');
+        el.className = 'tile';
+        if (s.given.indexOf(i) !== -1) {
+          el.classList.add('given');
+          el.textContent = letter;
+        } else if (showAnswer) {
+          el.textContent = letter;
+        } else if (t < s.typed.length) {
+          el.classList.add('typed');
+          el.textContent = s.typed[t++];
+        } else if (!nextMarked) {
+          el.classList.add('next');
+          nextMarked = true;
+        }
+        i++;
+        group.appendChild(el);
+      });
+      tiles.insertBefore(group, input);
+    });
+  }
+
+  function guessMatches() {
+    var t = 0;
+    for (var i = 0; i < s.letters.length; i++) {
+      if (s.given.indexOf(i) !== -1) continue;
+      if (fold(s.typed[t++] || '') !== fold(s.letters[i])) return false;
+    }
+    return true;
+  }
+
+  function tick() {
+    var left = Math.max(0, s.deadline - performance.now());
+    var secs = Math.ceil(left / 1000);
+    clock.firstChild.nodeValue = secs;
+    barFill.style.transform = 'scaleX(' + (left / s.total) + ')';
+    var low = secs <= 10;
+    clock.classList.toggle('low', low);
+    bar.classList.toggle('low', low);
+    if (left <= 0 && s.phase === 'play') lose();
+  }
+
+  function stopClock() { clearInterval(ticker); ticker = null; }
+
+  function secondsText(ms) { return (ms / 1000).toFixed(1) + ' seconds'; }
+  function totalText(ms) {
+    var secs = ms / 1000, mins = Math.floor(secs / 60);
+    return mins ? mins + ' min ' + (secs - mins * 60).toFixed(1) + ' s' : secs.toFixed(1) + ' s';
+  }
+
+  function win() {
+    var used = s.total - Math.max(0, s.deadline - performance.now());
+    stopClock();
+    s.runMs += used;
+    renderTiles(true);
+    tiles.classList.add('won');
+    statusEl.className = 'status won';
+    var name = '<span lang="vi">' + s.word.toLowerCase() + '</span>';
+    if (s.game < LAST_GAME) {
+      s.phase = 'won';
+      statusEl.innerHTML = '<strong>Correct: ' + name + '.</strong> You found it in ' + secondsText(used) + '. The next game gives you ' + GAME_SECONDS[s.game + 1] + ' seconds.';
+      btnMain.textContent = 'Next game';
+    } else {
+      s.phase = 'done';
+      statusEl.innerHTML = '<strong>Correct: ' + name + '. You finished all 5 games.</strong>';
+      $('total-value').textContent = totalText(s.runMs);
+      $('total').hidden = false;
+      startFireworks();
+      btnMain.textContent = 'Play again';
+    }
+    btnMain.hidden = false;
+    showResult();
+  }
+
+  function lose() {
+    s.phase = 'lost';
+    stopClock();
+    s.runMs += s.total;
+    renderTiles(true);
+    tiles.classList.add('lost');
+    statusEl.className = 'status lost';
+    statusEl.innerHTML = '<strong>Time is up.</strong> It was <span lang="vi">' + s.word.toLowerCase() + '</span>.';
+    btnMain.textContent = 'Try another';
+    btnMain.hidden = false;
+    showResult();
+  }
+
+  function showStart() {
+    stopClock();
+    stopFireworks();
+    document.body.classList.remove('playing');
+    input.blur();
+    s.phase = 'start';
+    s.runMs = 0;
+    playScreen.hidden = true;
+    startScreen.hidden = false;
+    lede.hidden = false;
+  }
+
+  // Reads the letters typed so far. Spaces and anything that is not a letter are skipped,
+  // and the field is only rewritten between keystrokes of a Vietnamese input method, never during one.
+  function onType() {
+    if (s.phase !== 'play') { if (!composing) input.value = ''; return; }
+    var chars = Array.from(input.value.normalize('NFC')).filter(function (c) { return /\p{L}/u.test(c); }).slice(0, blanks());
+    s.typed = chars.map(function (c) { return c.toUpperCase(); });
+    if (!composing && input.value !== chars.join('')) input.value = chars.join('');
+    renderTiles();
+    if (s.typed.length < blanks()) {
+      statusEl.textContent = TYPE_PROMPT;
+      return;
+    }
+    if (guessMatches()) {
+      win();
+    } else if (!composing) {
+      statusEl.textContent = 'Not that one. Delete some letters and try again.';
+      tiles.classList.remove('shake');
+      void tiles.offsetWidth;
+      tiles.classList.add('shake');
+    }
+  }
+
+  input.addEventListener('input', onType);
+  input.addEventListener('compositionstart', function () { composing = true; });
+  input.addEventListener('compositionend', function () { composing = false; onType(); });
+
+  // Enter, or Go on a phone keyboard, moves on once a round is over.
+  $('guess-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (s.phase === 'won' || s.phase === 'lost' || s.phase === 'done') advance();
+  });
+
+  // Typing anywhere on the page goes to the word while a round is running.
+  document.addEventListener('keydown', function (e) {
+    if (s.phase !== 'play' || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (document.activeElement === input) return;
+    if (e.key.length === 1 || e.key === 'Backspace') input.focus();
+  });
+
+  startScreen.addEventListener('click', function (e) {
+    var b = e.target.closest('.level');
+    if (!b) return;
+    s.runMs = 0;
+    s.used = [];
+    startGame(Number(b.dataset.level), 0);
+  });
+
+  function advance() {
+    if (s.phase === 'won') startGame(s.level, s.game + 1);
+    else if (s.phase === 'lost') startGame(s.level, s.game);
+    else showStart();
+  }
+  btnMain.addEventListener('click', advance);
+
+  // Reset: back to game 1 of the same level, with the full 60 seconds.
+  $('btn-reset').addEventListener('click', function () {
+    s.runMs = 0;
+    startGame(s.level, 0);
+  });
+  $('btn-levels').addEventListener('click', showStart);
+})();
+</script>
+
+</body>
+</html>
